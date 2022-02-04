@@ -1,5 +1,4 @@
-# APPA_109N_FPC
-Pascal unit for APPA 109N (107N) multimeter
+# APPA 109N (107N) on Free Pascal (Lazarus)
 
 ### What it does
 
@@ -14,7 +13,7 @@ The uncertainty of the measurement is a sum of it's random part and the systemat
 
 uncertainty = n% * reading + N * resolution
 
-IF we measure a one separate value - it's uncertainty will be the sum of both parts, but if we acquire few values at once and we are interested in the relative difference between the measurements - we do not necessary have to consider the systematic part. For example, if we measure temperature dependence of some parameter in order to calculate it's temperature coefficient - the systematic part of the uncertainties can be discarded.
+If we measure a one separate value - it's uncertainty will be the sum of both parts, but if we acquire few values at once and we are interested in the relative difference between the measurements - we do not necessary have to consider the systematic part. For example, if we measure temperature dependence of some parameter in order to calculate it's temperature coefficient - the systematic part of the uncertainties can be discarded.
 
 Takin this into account there is an option to get the full uncertainty using function GetUncertaintySI() or just it's random part using GetRandUncertaintySI().
 
@@ -89,7 +88,7 @@ theValue := GetValueSI();
 ```
 
 ### Contact
-[For reporting bugs, suggestions, patches](https://github.com/serhiykobyakov/APPA_109N_FPC/issues)
+For reporting [bugs, suggestions, patches](https://github.com/serhiykobyakov/APPA_109N_FPC/issues)
 
 ### License
 The project is licensed under the [MIT license](https://github.com/serhiykobyakov/APPA_109N_FPC/blob/main/LICENSE)
