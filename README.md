@@ -1,5 +1,4 @@
-# APPA 109N (107N)
-Free Pascal unit (Lazarus)
+##Free Pascal unit (Lazarus) for APPA 109N (107N) multimeter
 
 ### What it does
 
