@@ -34,6 +34,7 @@ Linux
 ### How To Use
 1. Put "APPA_109N" in the Uses section of your file, put theDevice: APPA_109N_device; into the var section of the application.
 2. Put the initialization code into the FormCreate section of main application Form:
+
 ```
 procedure TForm1.FormCreate(Sender: TObject);
 begin  
