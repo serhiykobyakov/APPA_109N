@@ -1,4 +1,5 @@
-# APPA 109N (107N) on Free Pascal (Lazarus)
+# APPA 109N (107N)
+Free Pascal unit (Lazarus)
 
 ### What it does
 
