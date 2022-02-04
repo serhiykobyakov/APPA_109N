@@ -88,8 +88,8 @@ theValue := GetValueSI();
 ...     
 ```
 
-###Contact
-For reporting bugs, suggestions, patches: ()
+### Contact
+[For reporting bugs, suggestions, patches](https://github.com/serhiykobyakov/APPA_109N_FPC/issues)
 
 ### License
 The project is licensed under the [MIT license](https://github.com/serhiykobyakov/APPA_109N_FPC/blob/main/LICENSE)
