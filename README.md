@@ -15,7 +15,7 @@ uncertainty = n% * reading + N * resolution
 
 If we measure a one separate value - it's uncertainty will be the sum of both parts, but if we acquire few values at once and we are interested in the relative difference between the measurements - we do not necessary have to consider the systematic part. For example, if we measure temperature dependence of some parameter in order to calculate it's temperature coefficient - the systematic part of the uncertainties can be discarded.
 
-Takin this into account there is an option to get the full uncertainty using function GetUncertaintySI() or just it's random part using GetRandUncertaintySI().
+Taking this into account there is an option to get the full uncertainty using function GetUncertaintySI() or just it's random part using GetRandUncertaintySI().
 
 
 ### Supported platforms
@@ -81,6 +81,7 @@ theDevice.GetData();
 //  function GetValue2SI(): Real;
 //  function GetUnits2SI(): string;
 
+// for example:
 theValue := GetValueSI();
 ...
 
