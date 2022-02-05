@@ -88,6 +88,12 @@ theValue := GetValueSI();
 ...     
 ```
 
+### Run
+
+You may change the modes on the fly while reading the data from multimeter. So be careful - do not change modes in the experiment )))
+
+If the multimeter is switched off automatically the program will ask you to switch it on. If you want the multimeter to run forever (without auto switch off) just switch it on while holding the blue button.
+
 ### Contact
 For reporting [bugs, suggestions, patches](https://github.com/serhiykobyakov/APPA_109N_FPC/issues)
 
