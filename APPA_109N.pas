@@ -25,7 +25,7 @@ type
      Answer : Array[0..18] of Byte;
      theModeStr, theRange, theUnits, theUnitsSI, theUnitsSi2: string;
      theValueSI, theValueSI2, theValue, theRandomUncSI, theSystematicUncSI: Real;
-     theRangeCode: byte;
+     theRangeCode: byte;  // 0.. 7
      theTestStr: string;  // testing feature, will dissapear in the future
 
      procedure RmLockFile(ComPort: string);
@@ -33,10 +33,9 @@ type
 
    const
      theDeviceName = 'APPA 109N'; // just some device name
-     TimeOutDelay = 1000;     // MAx timeout delay for reading, must be larger than 450 ms according to the documentation
+     TimeOutDelay = 600;     // MAx timeout delay for reading, must be larger than 450 ms according to the documentation
      askStr : Array[0..4] of Byte = ($55, $55, $00, $00, $aa); // the bytes which invoke the device to give out the data
      AnswerBits = 18;         // number of bits (incl. 0 bit) which we expect to get from the device
-
 
      DenominatorTable : Array[0..4] of Integer = (1, 10, 100, 1000, 10000);
 
@@ -49,6 +48,11 @@ type
        ((0, 3, 6,  18, 8,  11, 14, 15, 16),
         (1, 4, 7,  18, 9,  12, 18, 18, 17),
         (2, 5, 18, 18, 10, 13, 18, 18, 18));
+
+     ACModeCode: array[0..2,0..8] of byte =
+       ((2, 1, 0, 0, 5, 6, 0, 0, 0),
+        (0, 0, 0, 0, 0, 0, 0, 0, 0),
+        (4, 3, 0, 0, 7, 8, 0, 0, 0));
 
      MultiplicatorSITable : Array[0..29] of Real =
        (1, 1, 1e-3, 1, 1e-3, 1, 1, 1e-9, 1e-6, 1e-3, 1, 1e3, 1e6, 1e9, 1,
@@ -84,24 +88,147 @@ type
 
 
      RandErrPercTable: Array[0..7,0..18] of Real =
-       ((10, 0.06, 11, 1, 0.06, 2, 0.3, 0.6, 1.2,  0.2, 1.2, 2,    0.2, 2.2,  1.5, 1e-2, 0.1, 0.1, 0),
-        (10, 0.06, 11, 1, 0.06, 2, 0.3, 0.6, 1.2,  0.2, 1.2, 2,    0.2, 2.2,  1.5, 1e-2, 0.1, 0.1, 0),
-        (5,  0.06, 6,  0, 0,    0, 0.3, 0.6, 0,    0,   0,   0,    0,   0,    0.9, 1e-2, 0,   0,   0),
-        (1,  0.06, 2,  0, 0,    0, 0.3, 0.6, 0,    0,   0,   0,    0,   0,    0.9, 1e-2, 0,   0,   0),
+       ((0,  0.06, 0,  0, 0.06, 0, 0.3, 0.6, 1.2,  0.2, 1.2, 2,    0.2, 2.2,  1.5, 1e-2, 0.1, 0.1, 0),
+        (0,  0.06, 0,  0, 0.06, 0, 0.3, 0.6, 1.2,  0.2, 1.2, 2,    0.2, 2.2,  1.5, 1e-2, 0.1, 0.1, 0),
+        (0,  0.06, 0,  0, 0,    0, 0.3, 0.6, 0,    0,   0,   0,    0,   0,    0.9, 1e-2, 0,   0,   0),
+        (0,  0.06, 0,  0, 0,    0, 0.3, 0.6, 0,    0,   0,   0,    0,   0,    0.9, 1e-2, 0,   0,   0),
         (0,  0,    0,  0, 0,    0, 0.3, 7,   0,    0,   0,   0,    0,   0,    1.2, 1e-2, 0,   0,   0),
         (0,  0,    0,  0, 0,    0, 5,   7,   0,    0,   0,   0,    0,   0,    1.2, 1e-2, 0,   0,   0),
         (0,  0,    0,  0, 0,    0, 5,   7,   0,    0,   0,   0,    0,   0,    1.5, 0,    0,   0,   0),
         (0,  0,    0,  0, 0,    0, 5,   0,   0,    0,   0,   0,    0,   0,    1.5, 0,    0,   0,   0));
 
+
      SystErrTable: Array[0..7,0..18] of Real =
-       ((100, 10, 180,  80, 60, 160, 30, 30, 80,   40, 120, 80,   40, 160,  10, 50, 3, 6,  0),
-        (100, 10, 180,  80, 20, 160, 30, 30, 80,   40, 120, 80,   40, 160,  10, 10, 6, 12, 0),
-        (80,  10, 160,  0,  0,  0,   30, 30, 0,    0,  0,   0,    0,  0,    5,  10, 0, 0,  0),
-        (50,  10, 130,  0,  0,  0,   30, 50, 0,    0,  0,   0,    0,  0,    5,  10, 0, 0,  0),
+       ((0,    10, 0,   0,  60, 0,   30, 30, 80,   40, 120, 80,   40, 160,  10, 50, 3, 6,  0),
+        (0,    10, 0,   0,  20, 0,   30, 30, 80,   40, 120, 80,   40, 160,  10, 10, 6, 12, 0),
+        (0,    10, 0,   0,  0,  0,   30, 30, 0,    0,  0,   0,    0,  0,    5,  10, 0, 0,  0),
+        (0,    10, 0,   0,  0,  0,   30, 50, 0,    0,  0,   0,    0,  0,    5,  10, 0, 0,  0),
         (0,    0,  0,   0,  0,  0,   50, 50, 0,    0,  0,   0,    0,  0,    5,  10, 0, 0,  0),
         (0,    0,  0,   0,  0,  0,   50, 20, 0,    0,  0,   0,    0,  0,    5,  10, 0, 0,  0),
         (0,    0,  0,   0,  0,  0,   20, 20, 0,    0,  0,   0,    0,  0,    5,  0,  0, 0,  0),
         (0,    0,  0,   0,  0,  0,   8, 0,   0,    0,  0,   0,    0,  0,    5,  0,  0, 0,  0));
+
+
+     ACRandErrTable: Array[1..8, 0..6, 0..7] of Real =
+     (((0,   0,   0, 0, 0, 0, 0, 0),
+       (0.7, 0.7, 0, 0, 0, 0, 0, 0),
+       (1,   1,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),       // AC mV  ACModeCode = 1
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0)),
+      ((0,   0,   0,   0,   0, 0, 0, 0),
+       (0.7, 0.7, 0.7, 0.7, 0, 0, 0, 0),
+       (1,   1,   1,   1,   0, 0, 0, 0),
+       (2,   2,   2,   0,   0, 0, 0, 0),
+       (3,   3,   3,   0,   0, 0, 0, 0),       // AC V  ACModeCode = 2
+       (5,   5,   5,   0,   0, 0, 0, 0),
+       (10,  10,  0,   0,   0, 0, 0, 0)),
+      ((0,   0,   0, 0, 0, 0, 0, 0),
+       (1.7, 1.7, 0, 0, 0, 0, 0, 0),
+       (2,   2,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),       // AC+DC mV   ACModeCode = 3
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0)),
+      ((0,   0,   0,   0,   0, 0, 0, 0),
+       (1.7, 1.7, 1.7, 1.7, 0, 0, 0, 0),
+       (2,   2,   2,   2,   0, 0, 0, 0),
+       (3,   3,   3,   0,   0, 0, 0, 0),
+       (4,   4,   4,   0,   0, 0, 0, 0),       // AC+DC V   ACModeCode = 4
+       (6,   6,   6,   0,   0, 0, 0, 0),
+       (11,  11,  0,   0,   0, 0, 0, 0)),
+      ((0,   0,   0, 0, 0, 0, 0, 0),
+       (0.8, 0.8, 0, 0, 0, 0, 0, 0),
+       (1.2, 1.2, 0, 0, 0, 0, 0, 0),
+       (0,   2,   0, 0, 0, 0, 0, 0),       // AC mA   ACModeCode = 5
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0)),
+      ((0,   0,   0, 0, 0, 0, 0, 0),
+       (0.8, 0.8, 0, 0, 0, 0, 0, 0),
+       (1.2, 1.2, 0, 0, 0, 0, 0, 0),
+       (0,   2,   0, 0, 0, 0, 0, 0),       // AC A   ACModeCode = 6
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0)),
+      ((0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0),       // AC+DC mA   ACModeCode = 7
+       (0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0)),
+      ((0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0),       // AC+DC A    ACModeCode = 8
+       (0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0),
+       (0, 0, 0, 0, 0, 0, 0, 0)));
+
+
+     ACSystErrTable: Array[1..8, 0..6, 0..7] of Real =
+     (((0,  0,  0, 0, 0, 0, 0, 0),
+       (80, 80, 0, 0, 0, 0, 0, 0),
+       (80, 80, 0, 0, 0, 0, 0, 0),
+       (0,  0,  0, 0, 0, 0, 0, 0),
+       (0,  0,  0, 0, 0, 0, 0, 0),       // AC mV  ACModeCode = 1
+       (0,  0,  0, 0, 0, 0, 0, 0),
+       (0,  0,  0, 0, 0, 0, 0, 0)),
+      ((0,   0,   0, 0, 0, 0, 0, 0),
+       (50,  50,  50, 50, 0, 0, 0, 0),
+       (50,  50,  50, 50, 0, 0, 0, 0),
+       (60,  60,  60, 0,  0, 0, 0, 0),
+       (70,  70,  70, 0,  0, 0, 0, 0),       // AC V  ACModeCode = 2
+       (80,  80,  80, 0,  0, 0, 0, 0),
+       (100, 100, 0,  0,  0, 0, 0, 0)),
+      ((0,   0,   0, 0, 0, 0, 0, 0),
+       (160, 160, 0, 0, 0, 0, 0, 0),
+       (160, 160, 0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),       // AC+DC mV   ACModeCode = 3
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0)),
+      ((0,    0,    0,   0,   0, 0, 0, 0),
+       (130,  130,  130, 130, 0, 0, 0, 0),
+       (130,  130,  130, 130, 0, 0, 0, 0),
+       (140,  140,  140, 0,   0, 0, 0, 0),
+       (150,  150,  150, 0,   0, 0, 0, 0),       // AC+DC V   ACModeCode = 4
+       (160,  160,  160, 0,   0, 0, 0, 0),
+       (180,  180,  0,   0,   0, 0, 0, 0)),
+      ((0,  0,  0, 0, 0, 0, 0, 0),
+       (50, 50, 0, 0, 0, 0, 0, 0),
+       (80, 80, 0, 0, 0, 0, 0, 0),
+       (0,  80, 0, 0, 0, 0, 0, 0),       // AC mA   ACModeCode = 5
+       (0,  0,  0, 0, 0, 0, 0, 0),
+       (0,  0,  0, 0, 0, 0, 0, 0),
+       (0,  0,  0, 0, 0, 0, 0, 0)),
+      ((0,  0,  0, 0, 0, 0, 0, 0),
+       (50, 50, 0, 0, 0, 0, 0, 0),
+       (80, 80, 0, 0, 0, 0, 0, 0),
+       (0,  80, 0, 0, 0, 0, 0, 0),       // AC A   ACModeCode = 6
+       (0,  0,  0, 0, 0, 0, 0, 0),
+       (0,  0,  0, 0, 0, 0, 0, 0),
+       (0,  0,  0, 0, 0, 0, 0, 0)),
+      ((0,   0,   0, 0, 0, 0, 0, 0),
+       (130, 130, 0, 0, 0, 0, 0, 0),
+       (160, 160, 0, 0, 0, 0, 0, 0),
+       (0,   160, 0, 0, 0, 0, 0, 0),       // AC+DC mA   ACModeCode = 7
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0)),
+      ((0,   0,   0, 0, 0, 0, 0, 0),
+       (130, 130, 0, 0, 0, 0, 0, 0),
+       (160, 160, 0, 0, 0, 0, 0, 0),       // AC+DC A    ACModeCode = 8
+       (0,   160, 0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0),
+       (0,   0,   0, 0, 0, 0, 0, 0)));
+
+
+     function FreqRangeI(freq: Real): Byte;
+     function FreqRangeU(freq: Real): Byte;
 
 
    public
@@ -206,6 +333,39 @@ begin
       factor := Power(10, 2 - ceil(log10(val)));
       Result := Round(val*factor)/factor;
     end;
+end;
+
+function APPA_109N_device.FreqRangeI(freq: Real): Byte;
+var
+  thefRange: Byte;
+begin
+  thefRange := 0;
+
+  if InRange(freq, 0, 40) then thefRange := 0
+  else if InRange(freq, 40.001, 500) then thefRange := 1
+  else if InRange(freq, 500.001, 1000) then thefRange := 2
+  else if InRange(freq, 1000.001, 3000) then thefRange := 3
+  else if (freq > 3000.001) then thefRange := 0;
+
+  Result := thefRange;
+end;
+
+function APPA_109N_device.FreqRangeU(freq: Real): Byte;
+var
+  thefRange: Byte;
+begin
+  thefRange := 0;
+
+  if InRange(freq, 0, 40) then thefRange := 0
+  else if InRange(freq, 40.001, 100) then thefRange := 1
+  else if InRange(freq, 100.001, 1000) then thefRange := 2
+  else if InRange(freq, 1000.001, 10000) then thefRange := 3
+  else if InRange(freq, 10000.001, 20000) then thefRange := 4
+  else if InRange(freq, 20000.001, 50000) then thefRange := 5
+  else if InRange(freq, 50000.001, 100000) then thefRange := 6
+  else if (freq > 100000.001) then thefRange := 0;
+
+  Result := thefRange;
 end;
 
 constructor APPA_109N_device.Init(ComPort: string);
@@ -318,6 +478,7 @@ var
   tstartwait: TDateTime;
   theMultiplicatorSI: Real;
   posval, negval, str: string;
+  theFreqRange: byte;
 begin
 // clear all the variables before obtaining new data
 // it maybe useless but I am testing now
@@ -345,7 +506,7 @@ begin
     end;
 
     counter := counter + 1;      // counting the number of attempts to read the data
-    theTestStr := 'Read attempt: ' + IntToStr(counter);
+    theTestStr := 'Read attempt: ' + IntToStr(counter) + LineEnding;
     if counter > 3 then   // if there is no answer for the 4th time - most probably the device is off
       begin
         showmessage(theDeviceName + ':' + LineEnding +
@@ -381,8 +542,8 @@ begin
   theDenominator := DenominatorTable[Answer[11] and 7];
   theValue := theval/theDenominator;
   theValueSI := theval*theMultiplicatorSI/theDenominator;
-  theRandomUncSI := 0.01*RandErrPercTable[theRangeCode,theModeCode]*theValueSI*theMultiplicatorSI;
-  theSystematicUncSI := SystErrTable[theRangeCode,theModeCode]*ResolutionTable[theRangeCode,theModeCode]*theMultiplicatorSI;
+  theRandomUncSI := 0.01*RandErrPercTable[theRangeCode,theModeCode]*theValueSI;
+  theSystematicUncSI := SystErrTable[theRangeCode,theModeCode]*ResolutionTable[theRangeCode,theModeCode];
   theUnits := UnitsTable[Round((Answer[11] and 248)/8)];
   theUnitsSI := UnitsSITable[Round((Answer[11] and 248)/8)];
 
@@ -396,6 +557,37 @@ begin
   theDenominator := DenominatorTable[Answer[16] and 7];
   theValueSI2 := theval*theMultiplicatorSI/theDenominator;
   theUnitsSI2 := UnitsSITable[Round((Answer[16] and 248)/8)];
+
+  if (theValueSI2 <> 0) then
+    begin
+      if InRange(ACModeCode[Answer[5], Answer[4]-1], 1, 4) then theFreqRange := FreqRangeU(theValueSI2)
+      else theFreqRange := FreqRangeI(theValueSI2);
+      theRandomUncSI := 0.01*ACRandErrTable[ACModeCode[Answer[5], Answer[4]-1], theFreqRange, theRangeCode]*abs(theValueSI);
+      theSystematicUncSI := ACSystErrTable[ACModeCode[Answer[5], Answer[4]-1], theFreqRange, theRangeCode]*ResolutionTable[theRangeCode,theModeCode];
+    end;
+
+
+  theTestStr := theTestStr + LineEnding;
+
+
+  theTestStr := theTestStr + 'theRangeCode:  ' + IntToStr(theRangeCode) + LineEnding;
+
+  theTestStr := theTestStr + LineEnding;
+
+  theTestStr := theTestStr + 'Resolution:  ' + FloatToStr(ResolutionTable[theRangeCode,theModeCode]) + LineEnding;
+  theTestStr := theTestStr + 'Rand err:    ' + FloatToStr(RandErrPercTable[theRangeCode,theModeCode]) + LineEnding;
+  theTestStr := theTestStr + 'Syst err:    ' + FloatToStr(SystErrTable[theRangeCode,theModeCode]) + LineEnding;
+
+  theTestStr := theTestStr + LineEnding;
+  theTestStr := theTestStr + LineEnding;
+
+
+  theTestStr := theTestStr + 'ACModeCode:  ' + IntToStr(ACModeCode[Answer[5], Answer[4]-1]) + LineEnding;
+  theTestStr := theTestStr + 'AC U range:  ' + IntToStr(FreqRangeU(theValueSI2)) + LineEnding;
+  theTestStr := theTestStr + 'AC I range:  ' + IntToStr(FreqRangeI(theValueSI2)) + LineEnding;
+  theTestStr := theTestStr + 'AC Rand err: ' + FloatToStr(ACRandErrTable[ACModeCode[Answer[5], Answer[4]-1], theFreqRange, theRangeCode]) + LineEnding;
+  theTestStr := theTestStr + 'AC Syst err: ' + FloatToStr(ACSystErrTable[ACModeCode[Answer[5], Answer[4]-1], theFreqRange, theRangeCode]) + LineEnding;
+
 end;
 
 function APPA_109N_device.GetStrVal(): string;
