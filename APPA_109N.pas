@@ -1,3 +1,9 @@
+// Free Pascal unit (Lazarus) for APPA 109N (107N) multimeter
+// Version 2022-02-06
+//
+// https://github.com/serhiykobyakov/APPA_109N_FPC
+//  
+
 unit APPA_109N;
 
 {$mode objfpc}{$H+}
@@ -25,8 +31,11 @@ type
      Answer : Array[0..18] of Byte;
      theModeStr, theRange, theUnits, theUnitsSI, theUnitsSi2: string;
      theValueSI, theValueSI2, theValue, theRandomUncSI, theSystematicUncSI: Real;
-     theRangeCode: byte;  // 0.. 7
+     theRangeCode: byte;
+
+// -- testing - should be removed someday 
      theTestStr: string;  // testing feature, will dissapear in the future
+// -- testing - should be removed someday 
 
      procedure RmLockFile(ComPort: string);
      function RoundUnc(val: Real): Real;
@@ -239,10 +248,8 @@ type
 
      function GetMode: string;              // get the mode of the measurement
      function GetRange(): string;
-
      function GetStrVal(): string;          // get value string - just like on the multimeter screen
      function GetStrUnits(): string;        // get units string - just like on the multimeter screen
-
      function GetValueSI(): Real;           // get value in SI units
      function GetUnitsSI(): string;         // get SI units of the value
      function GetUncertaintySI(): Real;     // get the measurement uncertainty in SI units
@@ -251,7 +258,9 @@ type
      function GetValue2SI(): Real;          // get the 2nd value in SI units
      function GetUnits2SI(): string;        // get SI units of the 2nd value
 
+// -- testing - should be removed someday 
      function GetTestStr(): string;         // testing feature, will dissapear in the future
+// -- testing - should be removed someday 
    end;
 
 
@@ -340,7 +349,6 @@ var
   thefRange: Byte;
 begin
   thefRange := 0;
-
   if InRange(freq, 0, 40) then thefRange := 0
   else if InRange(freq, 40.001, 500) then thefRange := 1
   else if InRange(freq, 500.001, 1000) then thefRange := 2
@@ -355,7 +363,6 @@ var
   thefRange: Byte;
 begin
   thefRange := 0;
-
   if InRange(freq, 0, 40) then thefRange := 0
   else if InRange(freq, 40.001, 100) then thefRange := 1
   else if InRange(freq, 100.001, 1000) then thefRange := 2
@@ -477,7 +484,7 @@ var
   i, counter, theModecode, theDenominator, theSum, theval: integer;
   tstartwait: TDateTime;
   theMultiplicatorSI: Real;
-  posval, negval, str: string;
+  posval, negval: string;
   theFreqRange: byte;
 begin
 // clear all the variables before obtaining new data
@@ -498,7 +505,6 @@ begin
       until MillisecondsBetween(Now, tstartwait) > 300;
 
     for i := 0 to AnswerBits do Answer[i] := 0;
-
     try
       for i := 0 to 4 do ser.SendByte(askStr[i]);
       if ser.canread(TimeOutDelay) then ser.RecvBufferEx(@Answer, AnswerBits + 1, TimeOutDelay);
@@ -506,7 +512,11 @@ begin
     end;
 
     counter := counter + 1;      // counting the number of attempts to read the data
+
+// -- testing - should be removed someday     
     theTestStr := 'Read attempt: ' + IntToStr(counter) + LineEnding;
+// -- testing - should be removed someday     
+    
     if counter > 3 then   // if there is no answer for the 4th time - most probably the device is off
       begin
         showmessage(theDeviceName + ':' + LineEnding +
@@ -542,7 +552,7 @@ begin
   theDenominator := DenominatorTable[Answer[11] and 7];
   theValue := theval/theDenominator;
   theValueSI := theval*theMultiplicatorSI/theDenominator;
-  theRandomUncSI := 0.01*RandErrPercTable[theRangeCode,theModeCode]*theValueSI;
+  theRandomUncSI := 0.01*RandErrPercTable[theRangeCode,theModeCode]*abs(theValueSI);
   theSystematicUncSI := SystErrTable[theRangeCode,theModeCode]*ResolutionTable[theRangeCode,theModeCode];
   theUnits := UnitsTable[Round((Answer[11] and 248)/8)];
   theUnitsSI := UnitsSITable[Round((Answer[11] and 248)/8)];
@@ -566,27 +576,21 @@ begin
       theSystematicUncSI := ACSystErrTable[ACModeCode[Answer[5], Answer[4]-1], theFreqRange, theRangeCode]*ResolutionTable[theRangeCode,theModeCode];
     end;
 
-
+// -- testing - should be removed someday 
   theTestStr := theTestStr + LineEnding;
-
-
   theTestStr := theTestStr + 'theRangeCode:  ' + IntToStr(theRangeCode) + LineEnding;
-
   theTestStr := theTestStr + LineEnding;
-
   theTestStr := theTestStr + 'Resolution:  ' + FloatToStr(ResolutionTable[theRangeCode,theModeCode]) + LineEnding;
   theTestStr := theTestStr + 'Rand err:    ' + FloatToStr(RandErrPercTable[theRangeCode,theModeCode]) + LineEnding;
   theTestStr := theTestStr + 'Syst err:    ' + FloatToStr(SystErrTable[theRangeCode,theModeCode]) + LineEnding;
-
   theTestStr := theTestStr + LineEnding;
   theTestStr := theTestStr + LineEnding;
-
-
   theTestStr := theTestStr + 'ACModeCode:  ' + IntToStr(ACModeCode[Answer[5], Answer[4]-1]) + LineEnding;
   theTestStr := theTestStr + 'AC U range:  ' + IntToStr(FreqRangeU(theValueSI2)) + LineEnding;
   theTestStr := theTestStr + 'AC I range:  ' + IntToStr(FreqRangeI(theValueSI2)) + LineEnding;
   theTestStr := theTestStr + 'AC Rand err: ' + FloatToStr(ACRandErrTable[ACModeCode[Answer[5], Answer[4]-1], theFreqRange, theRangeCode]) + LineEnding;
   theTestStr := theTestStr + 'AC Syst err: ' + FloatToStr(ACSystErrTable[ACModeCode[Answer[5], Answer[4]-1], theFreqRange, theRangeCode]) + LineEnding;
+// -- testing - should be removed someday 
 
 end;
 
@@ -627,10 +631,12 @@ begin
   Result := theUnitsSI2;
 end;
 
+// -- testing - should be removed someday 
 function APPA_109N_device.GetTestStr(): string;
 begin
   Result := theTestStr
 end;
+// -- testing - should be removed someday 
 
 function APPA_109N_device.GetValue2SI(): Real;
 begin
