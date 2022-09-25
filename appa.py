@@ -268,15 +268,28 @@ class Model109N:
     def __del__(self):
         self.__ser.close()
 
+    def __check_sum(self):
+        "Calculate checksum (0-17 bytes of the obtained string) and compare it with the 18-th byte"
+        if len(self.__dataline) == 19:
+            read_sum = self.__dataline[18]
+            thesum = 0
+            for i in range(18):
+                thesum += self.__dataline[i]
+            thesum = thesum % 256
+            return read_sum == thesum
+        else:
+            return False
 
     def __getdata(self):
         "Obtain data from the device"
         if time.time() - self.__lastcomtimestamp > self.SHORTESTTIMEBETWEENREADS:
             read_problem_counter = 0
             self.__dataline = ''
-            while len(self.__dataline) != 19:
+            checksumOK = False
+            while len(self.__dataline) != 19 and not checksumOK:
                 self.__ser.write(bytearray(b"\x55\x55\x00\x00\xaa"))
                 self.__dataline = self.__ser.readline()
+                checksumOK = self.__check_sum()
                 if len(self.__dataline) != 19:
                     read_problem_counter += 1
                     if read_problem_counter > 3:
@@ -372,7 +385,7 @@ class Model109N:
     def mode(self) -> str:
         "returns actual mode"
         self.__getdata()
-        return self.__mode + ' (' + str(self.__modecode) + ')'
+        return self.__mode
 
     @property
     def range(self) -> str:
