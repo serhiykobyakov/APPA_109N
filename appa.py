@@ -5,7 +5,7 @@ allowing to get the measured values along with their uncertainties.
 """
 
 
-__version__ = '23.09.2022'
+__version__ = '26.09.2022'
 __author__ = 'Serhiy Kobyakov'
 
 
@@ -27,7 +27,7 @@ class Model109N:
     COMPORTWRITETIMEOUT = 0.1
     SHORTESTTIMEBETWEENREADS = 0.46
     
-    __ModeTable = (('AC V',    'AC mV',    'Ohm',     'Diode',  'AC mA',    'AC A',    'Cap.', 'Hz',          'T, °C'),
+    __ModeTable = (('AC V',    'AC mV',    'R Ohm',   'Diode',  'AC mA',    'AC A',    'Cap.', 'Hz',          'T, °C'),
                    ('DC V',    'DC mV',    'Low Ohm', 'Beeper', 'DC mA',    'DC A',    'NA',   'Duty factor', 'T, °F'),
                    ('AC+DC V', 'AC+DC mV',  '',        '',      'AC+DC mA', 'AC+DC A', '',     '',            ''))
     
@@ -321,7 +321,8 @@ class Model109N:
                 case _:
                     self.__acmodecode = 10
 
-            self.__rangecode = (self.__dataline[7] - 128) if self.__dataline[7] > 7 else self.__dataline[7]
+            self.__rangecode =\
+                (self.__dataline[7] - 128) if self.__dataline[7] > 7 else self.__dataline[7]
             self.__mode = self.__ModeTable[self.__dataline[5]][self.__dataline[4]-1]
             self.__range = self.__RangeTable[self.__rangecode][self.__modecode]
 
@@ -330,11 +331,13 @@ class Model109N:
                                                         self.__dataline[8]]),
                                              byteorder='big', signed=True)
             self.__denominator = self.__DenominatorTable[self.__dataline[11] & 7]
-            self.__multiplicator_SI = self.__MultiplicatorSITable[round((self.__dataline[11] & 248)/8)]
+            self.__multiplicator_SI =\
+                self.__MultiplicatorSITable[round((self.__dataline[11] & 248)/8)]
             self.__units = self.__UnitsTable[round((self.__dataline[11] & 248)/8)]
             self.__units_SI = self.__UnitsSITable[round((self.__dataline[11] & 248)/8)]
             self.__the_value = self.__intvalue / self.__denominator
-            self.__the_value_SI = round(self.__intvalue * self.__multiplicator_SI/ self.__denominator,
+            self.__the_value_SI =\
+                round(self.__intvalue * self.__multiplicator_SI/ self.__denominator,
                                         round(math.log10(self.__denominator) + 3))
 
             self.__2intvalue = int.from_bytes(bytearray([self.__dataline[15],
@@ -346,16 +349,34 @@ class Model109N:
             if self.__acmodecode < 8:
                 self.__freq = self.__2intvalue / self.__2denominator
                 self.__frangecode = self.__freq_to_code(self.__freq)
-                self.__the_rand_unc = 0.01 * self.__ACRandErrTable[self.__rangecode][self.__frangecode][self.__acmodecode] * abs(self.__the_value)
-                self.__the_rand_unc_SI = 0.01 * self.__ACRandErrTable[self.__rangecode][self.__frangecode][self.__acmodecode] * abs(self.__the_value_SI)
-                self.__the_syst_unc = self.__ACSystErrTable[self.__rangecode][self.__frangecode][self.__acmodecode] * self.__ResolutionTable[self.__rangecode][self.__modecode]
-                self.__the_syst_unc_SI = self.__ACSystErrTable[self.__rangecode][self.__frangecode][self.__acmodecode] * self.__ResolutionTable[self.__rangecode][self.__modecode] * self.__multiplicator_SI
+                self.__the_rand_unc = 0.01 *\
+                    self.__ACRandErrTable[self.__rangecode][self.__frangecode][self.__acmodecode] *\
+                    abs(self.__the_value)
+                self.__the_rand_unc_SI = 0.01 *\
+                    self.__ACRandErrTable[self.__rangecode][self.__frangecode][self.__acmodecode] *\
+                    abs(self.__the_value_SI)
+                self.__the_syst_unc =\
+                    self.__ACSystErrTable[self.__rangecode][self.__frangecode][self.__acmodecode] *\
+                    self.__ResolutionTable[self.__rangecode][self.__modecode]
+                self.__the_syst_unc_SI =\
+                    self.__ACSystErrTable[self.__rangecode][self.__frangecode][self.__acmodecode] *\
+                    self.__ResolutionTable[self.__rangecode][self.__modecode] *\
+                    self.__multiplicator_SI
             else:
                 self.__freq = 0.0
-                self.__the_rand_unc = 0.01 * self.__RandErrPercTable[self.__rangecode][self.__modecode] * abs(self.__the_value)
-                self.__the_rand_unc_SI = 0.01 * self.__RandErrPercTable[self.__rangecode][self.__modecode] * abs(self.__the_value_SI)
-                self.__the_syst_unc = self.__SystErrTable[self.__rangecode][self.__modecode] * self.__ResolutionTable[self.__rangecode][self.__modecode]
-                self.__the_syst_unc_SI = self.__SystErrTable[self.__rangecode][self.__modecode] * self.__ResolutionTable[self.__rangecode][self.__modecode] * self.__multiplicator_SI
+                self.__the_rand_unc =\
+                    0.01 * self.__RandErrPercTable[self.__rangecode][self.__modecode] *\
+                    abs(self.__the_value)
+                self.__the_rand_unc_SI = 0.01 *\
+                    self.__RandErrPercTable[self.__rangecode][self.__modecode] *\
+                    abs(self.__the_value_SI)
+                self.__the_syst_unc =\
+                    self.__SystErrTable[self.__rangecode][self.__modecode] *\
+                    self.__ResolutionTable[self.__rangecode][self.__modecode]
+                self.__the_syst_unc_SI =\
+                    self.__SystErrTable[self.__rangecode][self.__modecode] *\
+                    self.__ResolutionTable[self.__rangecode][self.__modecode] *\
+                    self.__multiplicator_SI
 
     def __freq_to_code(self, freq: float) -> int:
         "return range code from frequency value"
@@ -415,7 +436,8 @@ class Model109N:
     def value_str(self) -> str:
         "returns actual value along with the uncertainty and units"
         self.__getdata()
-        return f"{self.__the_value} ± {self.__roundunc(self.__the_rand_unc + self.__the_syst_unc)} {self.__units}"
+        return f"{self.__the_value} ±\
+            {self.__roundunc(self.__the_rand_unc + self.__the_syst_unc)} {self.__units}"
 
 
     @property
@@ -439,7 +461,8 @@ class Model109N:
     def value_SI_str(self) -> str:
         "returns actual value in SI units along with the uncertainty and units"
         self.__getdata()
-        return f"{self.__the_value_SI} ± {self.__roundunc(self.__the_rand_unc_SI + self.__the_syst_unc_SI)} {self.__units_SI}"
+        return f"{self.__the_value_SI} ±\
+            {self.__roundunc(self.__the_rand_unc_SI + self.__the_syst_unc_SI)} {self.__units_SI}"
 
 
     @property
