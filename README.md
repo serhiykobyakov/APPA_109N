@@ -19,7 +19,6 @@ Taking this into account there is an option to get the full uncertainty using fu
 
 
 ### Supported platforms
-Windows (has not been tested yet but must do the job)
 Linux
 
 ### Install
