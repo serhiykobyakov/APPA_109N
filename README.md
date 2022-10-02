@@ -1,10 +1,8 @@
 ## Free Pascal and Python units for APPA 109N (107N) multimeter
 
-### What it does
+### What they do
 
-You can connect and use use your APPA 109N (107N) multimeter in your projects using appropriate USB/RS232 optical adapter cable and this software.
-
-The unit can acquire the actual reading and calculate the uncertainty. 
+You can connect your APPA 109N (107N) multimeter(s) to PC using appropriate USB/RS232 optical adapter cable. The units can acquire the actual reading and calculate the corresponding uncertainty.
 
 The software has been tested for errors, stability and speed (bugs free is not guaranteed, see the licence).
 
