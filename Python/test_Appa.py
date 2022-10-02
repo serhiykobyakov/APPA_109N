@@ -1,28 +1,28 @@
 #!/usr/bin/python3
-""" sample programto use few Appa 109N multimeters simultaneously  """
+""" sample program to use few Appa 109N multimeters simultaneously  """
 
 import sys
 import time
 import tty
 import termios
-sys.path.append('/home/serg/Projects/0_new_python')
-import appa
+from datetime import datetime
 import serial
 import serial.tools.list_ports
-from datetime import datetime
+import appa
 
 
-__version__ = '27.09.2022'
+__version__ = '02.10.2022'
 __author__ = 'Serhiy Kobyakov'
 
 
 # max number of multimeters that can be simultaneously procesed:
 MAXNMETERS = 4
+NUMDIGITS = 5
 
 mmeter = []
 n_mmeters = 0
-theheader = ""
-thedata = ""
+data_file_header = ""
+the_data = ""
 
 
 def getch():
@@ -46,30 +46,33 @@ def clearstr():
 def savedata():
     "save the obtained data to file"
     clearstr()
-    if len(thedata) > 0:
+    if len(the_data) > 0:
         now = datetime.now()
         fname = now.strftime("%Y-%m-%d_%H-%M-%S") + ".dat"
         f = open(fname, "w", encoding="utf_8")
-        f.write(theheader)
-        f.write(thedata)
+        f.write(data_file_header)
+        f.write(the_data)
         f.close()
         print("the data has been saved into file:", fname)
     print()
 
 
-def printheader():
-    "restart measurement"
-    global theheader
-    theheader = ""
+def print_header():
+    "print header of the table"
+    global data_file_header
+    data_file_header = ""
+    global the_data
+    the_data = ""
     for n in range(n_mmeters):
-        print("#".rjust(8) + str(n).ljust(8), "", end="")
+        print("#".rjust(NUMDIGITS + 2) + str(n).ljust(NUMDIGITS + 3), "", end="")
     print()
     for n in range(n_mmeters):
         thestr = " (" + mmeter[n].units + ")"
-        print(mmeter[n].mode.rjust(7) + thestr.ljust(9), "", end="")
-        theheader = theheader + mmeter[n].mode + thestr +\
-                    "\tΔ" + mmeter[n].mode + thestr +"\t"
-    theheader = theheader[:-1] + "\n"
+        the_mode = mmeter[n].mode
+        print(the_mode.rjust(NUMDIGITS + 2) + thestr.ljust(NUMDIGITS + 3), "", end="")
+        data_file_header = data_file_header + the_mode + thestr +\
+                    "\tΔ" + the_mode + thestr +"\t"
+    data_file_header = data_file_header[:-1] + "\n"
     print()
 
 
@@ -90,7 +93,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print()
-    printheader()
+    print_header()
 
     while True:
         time.sleep(0.1)
@@ -110,15 +113,16 @@ if __name__ == "__main__":
         elif ord(thechar) == 114:  # r - restart
             clearstr()
             print("\n")
-            printheader()
-        elif ord(thechar) == 32: # Space
+            print_header()
+        elif ord(thechar) == 32 or ord(thechar) == 13: # Space, Enter
             clearstr()
             for i in range(n_mmeters):
-                print(str(mmeter[i].value).rjust(7) + " ± " + str(mmeter[i].uncertainty).ljust(6),\
-                    "", end="")
-                thedata = thedata + str(mmeter[i].value) + "\t" + str(mmeter[i].uncertainty) + "\t"
-                #print("\t\t", end="")
-            thedata = thedata[:-1] + "\n"
+                value_1, uncertainty_1 = mmeter[i].value
+                print(str(value_1).rjust(NUMDIGITS + 2) + " ± " +\
+                    str(uncertainty_1).ljust(NUMDIGITS), "", end="")
+                the_data = the_data + str(value_1) + "\t" +\
+                    str(uncertainty_1) + "\t"
+            the_data = the_data[:-1] + "\n"
             print()
         else:
             pass

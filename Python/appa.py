@@ -5,7 +5,7 @@ allowing to get the measured values along with their uncertainties.
 """
 
 
-__version__ = '27.09.2022'
+__version__ = '02.10.2022'
 __author__ = 'Serhiy Kobyakov'
 
 
@@ -433,13 +433,15 @@ class Model109N:
         return thecode
 
 
-    def __roundunc(self, unc) -> float:
-        "round uncertainty value to two significant digits"
+    @staticmethod
+    def __roundunc(unc) -> float:
+        "Round uncertainty value to two significant digits"
         if unc == 0.0:
-            return 1
+            the_answer = 0.0
         else:
-            decPlace = 1 - round(math.log10(unc))
-            return round(unc, decPlace)
+            dec_place = 1 - round(math.log10(unc))
+            the_answer = round(unc, dec_place)
+        return the_answer
 
 
     @property
@@ -459,13 +461,7 @@ class Model109N:
     def value(self) -> float:
         "returns actual value"
         self.__getdata()
-        return self.__the_value
-
-    @property
-    def uncertainty(self) -> float:
-        "returns actual value in SI units"
-        #self.__getdata()
-        return self.__roundunc(self.__the_rand_unc + self.__the_syst_unc)
+        return self.__the_value, self.__roundunc(self.__the_rand_unc + self.__the_syst_unc)
 
     @property
     def units(self) -> str:
@@ -484,13 +480,7 @@ class Model109N:
     def value_SI(self) -> float:
         "returns actual value in SI units"
         self.__getdata()
-        return self.__the_value_SI
-
-    @property
-    def uncertainty_SI(self) -> float:
-        "returns actual value in SI units"
-        #self.__getdata()
-        return self.__roundunc(self.__the_rand_unc_SI + self.__the_syst_unc_SI)
+        return self.__the_value_SI, self.__roundunc(self.__the_rand_unc_SI + self.__the_syst_unc_SI)
 
     @property
     def units_SI(self) -> str:
