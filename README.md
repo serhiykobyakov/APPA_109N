@@ -16,7 +16,7 @@ If we measure a one separate value - it's full uncertainty (3 sigma, 100% confid
 
 
 ### Supported platforms
-Linux
+Linux, Windows
 
 
 ### Run
