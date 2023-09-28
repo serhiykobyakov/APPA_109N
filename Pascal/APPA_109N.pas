@@ -1,6 +1,6 @@
 // Free Pascal unit (Lazarus) for APPA 109N (107N) multimeter
 //
-// Version 2022-02-13
+// Version 2023-09-28
 // (c) Serhiy Kobyakov
 //
 // https://github.com/serhiykobyakov/APPA_109N_FPC
@@ -18,6 +18,7 @@ uses
   FileUtil,
   Unix,
   Math,
+  addfunc,
   DateUtils;
 
 
@@ -37,6 +38,7 @@ type
 
 // -- testing - should be removed someday 
      theTestStr: string;  // testing feature, will dissapear in the future
+     maxReadAttempts: Word;
 // -- testing - should be removed someday 
 
      procedure RmLockFile(ComPort: string);
@@ -483,12 +485,16 @@ end;
 
 procedure APPA_109N_device.GetData();
 var
-  i, counter, theModecode, theDenominator, theSum, theval: integer;
+  i, attempts, theModecode, theDenominator, theSum, theval: integer;
+  fromLastReading: longint;
   tstartwait: TDateTime;
   theMultiplicatorSI: Real;
   posval, negval: string;
   theFreqRange: byte;
+  readSuccess: boolean;
+  checksum, hexSumStr, hexSumStrCompare: string;
 begin
+  readSuccess := False;
 // clear all the variables before obtaining new data
 // it maybe useless but I am testing now
 // so it may be useful in order to catch an error in code eventually...
@@ -498,42 +504,79 @@ begin
   theRandomUncSI := 0;      theSystematicUncSI := 0;
 
 // let's get the answer drom the device!
-  counter := 0;
+  maxReadAttempts := 0;
+  attempts := 1;
   Repeat
     tstartwait := Now;
-    if counter > 0 then   // wait up to 0,3 s if we have to repeat the data acquisition too soon
-      repeat
-        Application.ProcessMessages;     // do something useful while waiting
-      until MillisecondsBetween(Now, tstartwait) > 300;
+    // wait TimeOutDelay s if we have to repeat the data acquisition too soon
+    //if counter > 0 then
+    fromLastReading := MillisecondsBetween(Now, theLastReadTime);
+
+    // Wait up to TimeOutDelay if the data requested too soon
+    if fromLastReading < TimeOutDelay then
+        SleepFor(TimeOutDelay - fromLastReading + 100);
+
+    // sending ask string
+    //if ser.CanWrite(TimeOutDelay) then i := ser.SendBuffer(@askStr, 4)
+    if ser.CanWrite(TimeOutDelay) then for i := 0 to 4 do ser.SendByte(askStr[i])
+    else showmessage('Cannot WRITE for timeout period');
+
+        //if ser.lastError<>0 then showmessage(theDeviceName + ':' + LineEnding +
+        //                                 'Error in communication after sending ask string');
 
     for i := 0 to AnswerBits do Answer[i] := 0;
     try
-      for i := 0 to 4 do ser.SendByte(askStr[i]);
-      if ser.canread(TimeOutDelay) then ser.RecvBufferEx(@Answer, AnswerBits + 1, TimeOutDelay);
+      if ser.CanRead(TimeOutDelay * 2) then
+        ser.RecvBufferEx(@Answer, AnswerBits + 1, TimeOutDelay *2);
     finally
     end;
+    theLastReadTime := Now;
 
-    counter := counter + 1;      // counting the number of attempts to read the data
-
-// -- testing - should be removed someday     
-    theTestStr := 'Read attempt: ' + IntToStr(counter) + LineEnding;
-// -- testing - should be removed someday     
+        //if ser.lastError<>0 then showmessage(theDeviceName + ':' + LineEnding +
+        //                                 'Error in communication after ser.Recvstring');
     
-    if counter > 3 then   // if there is no answer for the 4th time - most probably the device is off
+    if attempts > 5 then   // if there is no answer for the 4th time - most probably the device is off
       begin
         showmessage(theDeviceName + ':' + LineEnding +
                         'Switch the multimeter on and then click "OK"!' + LineEnding + LineEnding +
                         'Hold blue button while switching the multimeter on'+ LineEnding +
-                        'to disable auto switch off'); counter := 0;
+                        'to disable auto switch off');
         Application.ProcessMessages;
         ser.Purge;  // clear all the buffers before the next attempt
       end;
 
+
+    // calculate sum of obtained data:
     theSum := 0;
     for i := 0 to AnswerBits - 1 do
       theSum := theSum + Answer[i];  // count the sum of bits except the last one
+    hexSumStr := IntToHex(theSum);
+    if length(hexSumStr) >= 2 then
+      hexSumStrCompare := '$' + copy(hexSumStr, length(hexSumStr) - 1, 2)
+    else hexSumStrCompare := '$' + 'FF';
 
-  Until (theSum <> 0) and (StrToInt('$'+copy(IntToHex(theSum,2),2,2)) = StrToInt('$' + HexStr(Answer[AnswerBits],2))); // repeat until the checksum is correct
+    // the checksum in obtained data
+    checksum := '$' + HexStr(Answer[AnswerBits], 2);
+
+//showmessage( 'the sum: ' + IntToStr(theSum) + LineEnding +
+//             'hex Sum: ' + hexSumStr + ' length: ' + IntToStr(length(hexSumStr)) + LineEnding +
+//             'cut last two characters: ' + copy(hexSumStr, length(hexSumStr) - 1, 2) + LineEnding +
+//             hexSumStrCompare + ' = ' + checksum);
+
+// compare checksum and calculated sum
+    if (theSum <> 0) and (StrToInt(hexSumStrCompare) = StrToInt(checksum)) then
+      readSuccess := True
+    else
+      attempts := attempts + 1;      // counting the number of attempts to read the data
+
+  Until readSuccess;
+
+
+// -- testing - should be removed someday
+  if attempts > maxReadAttempts then maxReadAttempts := attempts;
+  theTestStr := 'Read data in ' + IntToStr(attempts) + ' try (max: ' +
+      IntToStr(maxReadAttempts) + ')' + LineEnding;
+// -- testing - should be removed someday
 
 
 // So we got the answer from the device
