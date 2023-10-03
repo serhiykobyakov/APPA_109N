@@ -16,7 +16,7 @@ uses
   Classes, SysUtils, dialogs, synaser,
   StdCtrls, Controls, Forms,
   FileUtil,
-  Unix,
+  //Unix,
   Math,
   addfunc,
   DateUtils;
@@ -43,6 +43,11 @@ type
 
      procedure RmLockFile(ComPort: string);
      function RoundUnc(val: Real): Real;
+
+     procedure WriteToLog(str: string);
+
+   protected
+     theComPort: string;
 
    const
      theDeviceName = 'APPA 109N'; // just some device name
@@ -348,6 +353,23 @@ begin
     end;
 end;
 
+procedure APPA_109N_device.WriteToLog(str: string);
+// write a log message to file
+var
+  fileName: string;
+  f: Text;
+begin
+  fileName := theDeviceName + '.log';
+  Assign(f, fileName);
+
+  if not FileExists(fileName) then Rewrite(f);
+
+  Append(f);
+  WriteLn(f, str);
+  WriteLn(f, LineEnding);
+  Close(f);
+end;
+
 function APPA_109N_device.FreqRangeI(freq: Real): Byte;
 var
   thefRange: Byte;
@@ -416,6 +438,7 @@ begin
   try
     ser.RaiseExcept:=true;
     ser.Connect(ComPort);
+    theComPort := ComPort;
     ser.config(9600, 8, 'N', SB1, False, False);
 
     SleepFor(100);
@@ -491,10 +514,9 @@ var
   theMultiplicatorSI: Real;
   posval, negval: string;
   theFreqRange: byte;
-  readSuccess: boolean;
+  writeSuccess, readSuccess: boolean;
   checksum, hexSumStr, hexSumStrCompare: string;
 begin
-  readSuccess := False;
 // clear all the variables before obtaining new data
 // it maybe useless but I am testing now
 // so it may be useful in order to catch an error in code eventually...
@@ -503,38 +525,47 @@ begin
   theValue := 0;            theValueSI := 0;           theValueSI2 := 0;
   theRandomUncSI := 0;      theSystematicUncSI := 0;
 
+  tstartwait := Now;
+  // wait TimeOutDelay s if we have to repeat the data acquisition too soon
+  //if counter > 0 then
+  fromLastReading := MillisecondsBetween(Now, theLastReadTime);
+
+  // Wait up to TimeOutDelay if the data requested too soon
+  if fromLastReading < TimeOutDelay then
+      SleepFor(TimeOutDelay - fromLastReading + 100);
+
+
+
+// send ask string
+  writeSuccess := False;
+  attempts := 1;
+
+  Repeat
+    for i := 0 to 4 do ser.SendByte(askStr[i]);
+
+    if ser.lastError <> 0 then
+      begin
+        WriteToLog('Error sending ask string');
+        attempts := attempts + 1;
+      end
+    else writeSuccess := True;
+  until writeSuccess;
+
+
+
 // let's get the answer drom the device!
+  readSuccess := False;
   maxReadAttempts := 0;
   attempts := 1;
   Repeat
-    tstartwait := Now;
-    // wait TimeOutDelay s if we have to repeat the data acquisition too soon
-    //if counter > 0 then
-    fromLastReading := MillisecondsBetween(Now, theLastReadTime);
-
-    // Wait up to TimeOutDelay if the data requested too soon
-    if fromLastReading < TimeOutDelay then
-        SleepFor(TimeOutDelay - fromLastReading + 100);
-
-    // sending ask string
-    //if ser.CanWrite(TimeOutDelay) then i := ser.SendBuffer(@askStr, 4)
-    if ser.CanWrite(TimeOutDelay) then for i := 0 to 4 do ser.SendByte(askStr[i])
-    else showmessage('Cannot WRITE for timeout period');
-
-        //if ser.lastError<>0 then showmessage(theDeviceName + ':' + LineEnding +
-        //                                 'Error in communication after sending ask string');
-
     for i := 0 to AnswerBits do Answer[i] := 0;
     try
-      if ser.CanRead(TimeOutDelay * 2) then
-        ser.RecvBufferEx(@Answer, AnswerBits + 1, TimeOutDelay *2);
-    finally
-    end;
-    theLastReadTime := Now;
+      //if ser.CanRead(TimeOutDelay * 2) then
+      ser.RecvBufferEx(@Answer, AnswerBits + 1, TimeOutDelay *2);
 
-        //if ser.lastError<>0 then showmessage(theDeviceName + ':' + LineEnding +
-        //                                 'Error in communication after ser.Recvstring');
-    
+    theLastReadTime := Now;
+    ser.Purge;  // clear all the buffers before the next attempt
+
     if attempts > 5 then   // if there is no answer for the 4th time - most probably the device is off
       begin
         showmessage(theDeviceName + ':' + LineEnding +
@@ -542,7 +573,6 @@ begin
                         'Hold blue button while switching the multimeter on'+ LineEnding +
                         'to disable auto switch off');
         Application.ProcessMessages;
-        ser.Purge;  // clear all the buffers before the next attempt
       end;
 
 
@@ -567,7 +597,13 @@ begin
     if (theSum <> 0) and (StrToInt(hexSumStrCompare) = StrToInt(checksum)) then
       readSuccess := True
     else
-      attempts := attempts + 1;      // counting the number of attempts to read the data
+      begin
+        WriteToLog('Error getting data from device');
+        attempts := attempts + 1;      // counting the number of attempts to read the data
+      end;
+
+    finally
+    end;
 
   Until readSuccess;
 
